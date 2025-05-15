@@ -1,80 +1,25 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Colors from '@/constants/Colors';
-import { Mic, Send, Copy, Share2 } from 'lucide-react-native';
-import { Audio } from 'expo-av';
+import { Send, Copy, Share2 } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Share from 'expo-sharing';
+import SpeechInterface from '@/components/SpeechInterface';
 
 export default function HomeScreen() {
-  const [isRecording, setIsRecording] = useState(false);
   const [transcription, setTranscription] = useState('');
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-
-  const handleStartRecording = async () => {
-    try {
-      // Request permissions
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please grant microphone permissions to use speech-to-text.');
-        return;
-      }
-
-      // Set up audio mode
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      // Start recording
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      setRecording(recording);
-      setIsRecording(true);
-    } catch (error) {
-      console.error('Error starting recording:', error);
-      Alert.alert('Error', 'Failed to start recording. Please try again.');
-    }
-  };
-
-  const handleStopRecording = async () => {
-    try {
-      if (!recording) return;
-
-      // Stop recording
-      await recording.stopAndUnloadAsync();
-      setRecording(null);
-      setIsRecording(false);
-
-      // For now, just show a placeholder message
-      setTranscription("Recording completed. Transcription will be available when the model is integrated.");
-    } catch (error) {
-      console.error('Error stopping recording:', error);
-      Alert.alert('Error', 'Failed to stop recording. Please try again.');
-    }
-  };
 
   const handleCopy = async () => {
-    try {
-      await Clipboard.setStringAsync(transcription);
-      Alert.alert('Success', 'Text copied to clipboard');
-    } catch (error) {
-      console.error('Error copying text:', error);
-      Alert.alert('Error', 'Failed to copy text to clipboard');
-    }
+    await Clipboard.setStringAsync(transcription);
   };
 
   const handleShare = async () => {
     try {
-      await Share.share({
-        message: transcription,
-      });
+      await Share.shareAsync(transcription);
     } catch (error) {
-      console.error('Error sharing text:', error);
-      Alert.alert('Error', 'Failed to share text');
+      console.error('Error sharing:', error);
     }
   };
 
@@ -109,12 +54,7 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.controls}>
-          <TouchableOpacity
-            style={[styles.micButton, isRecording && styles.micButtonRecording]}
-            onPress={isRecording ? handleStopRecording : handleStartRecording}
-          >
-            <Mic color={Colors.white} size={32} />
-          </TouchableOpacity>
+          <SpeechInterface onTranscriptionResult={setTranscription} />
           
           {transcription ? (
             <TouchableOpacity style={styles.sendButton}>
@@ -179,22 +119,6 @@ const styles = StyleSheet.create({
     gap: 16,
     marginTop: 'auto',
     paddingBottom: 16,
-  },
-  micButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.primary[500],
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  micButtonRecording: {
-    backgroundColor: Colors.error[500],
   },
   sendButton: {
     width: 56,
