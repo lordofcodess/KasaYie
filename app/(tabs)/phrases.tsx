@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Colors from '@/constants/Colors';
 import { User, BookOpen, RefreshCcw, Layers } from 'lucide-react-native';
+import { router } from 'expo-router';
 
 export default function PhrasesScreen() {
   return (
@@ -18,21 +19,30 @@ export default function PhrasesScreen() {
         <Text style={styles.sessionButtonText}>Start new session +</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.bigButton, { backgroundColor: '#F7E017' }]}> 
+      <TouchableOpacity 
+        style={[styles.bigButton, { backgroundColor: '#F7E017' }]}
+        onPress={() => router.push('/games-therapy')}
+      > 
         <View style={styles.buttonContent}>
           <Text style={styles.bigButtonText}>Games & Therapy</Text>
           <Layers color="#fff" size={48} style={styles.buttonIcon} />
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.bigButton, { backgroundColor: '#1DB954' }]}> 
+      <TouchableOpacity 
+        style={[styles.bigButton, { backgroundColor: '#1DB954' }]}
+        onPress={() => router.push('/phrase-book')}
+      > 
         <View style={styles.buttonContent}>
           <Text style={styles.bigButtonText}>Phrase Book</Text>
           <BookOpen color="#fff" size={48} style={styles.buttonIcon} />
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.bigButton, { backgroundColor: '#111' }]}> 
+      <TouchableOpacity 
+        style={[styles.bigButton, { backgroundColor: '#111' }]}
+        onPress={() => router.push('/past-conversations')}
+      > 
         <View style={styles.buttonContent}>
           <Text style={styles.bigButtonText}>Past Conversations</Text>
           <RefreshCcw color="#fff" size={48} style={styles.buttonIcon} />
