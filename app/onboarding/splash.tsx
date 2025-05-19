@@ -30,7 +30,7 @@ export default function SplashScreen() {
     
     // Navigate to the next screen after 3 seconds
     const timer = setTimeout(() => {
-      router.replace('/onboarding/speek-freely');
+      router.replace('/onboarding/signup');
     }, 3000);
     
     return () => clearTimeout(timer);

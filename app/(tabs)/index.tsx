@@ -12,7 +12,7 @@ export default function HomeScreen() {
   const [transcription, setTranscription] = useState('');
 
   const handleCopy = async () => {
-    await Clipboard.setStringAsync(transcription);
+      await Clipboard.setStringAsync(transcription);
   };
 
   const handleShare = async () => {
