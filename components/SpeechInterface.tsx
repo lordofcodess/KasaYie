@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import Colors from '@/constants/Colors';
-import { Mic, MicOff } from 'lucide-react-native';
-import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
-
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { Mic, MicOff, Share } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 interface SpeechInterfaceProps {
   onTranscriptionResult: (text: string) => void;
 }
 
-const API_URL = 'http://192.168.1.32:8000';
+// const API_URL = 'http://10.18.108.106:8000'; 
+const API_URL = 'http://127.0.0.1:8000';
 
 export default function SpeechInterface({ onTranscriptionResult }: SpeechInterfaceProps) {
   const [isRecording, setIsRecording] = useState(false);
@@ -104,6 +106,11 @@ export default function SpeechInterface({ onTranscriptionResult }: SpeechInterfa
         throw new Error('Recording file does not exist');
       }
 
+      // Check file size
+      if (fileInfo.size === 0) {
+        throw new Error('Recording file is empty');
+      }
+
       setRecording(null);
       setIsRecording(false);
 
@@ -117,27 +124,102 @@ export default function SpeechInterface({ onTranscriptionResult }: SpeechInterfa
       } as any);
 
       console.log('Sending to API:', `${API_URL}/transcribe`);
-      const response = await fetch(`${API_URL}/transcribe`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      
+      // Add timeout for the API request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-      console.log('API Response status:', response.status);
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error:', errorText);
-        throw new Error(`Transcription failed: ${errorText}`);
+      try {
+        const response = await fetch(`http://127.0.0.1:8000/transcribe`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        console.log('API Response status:', response.status);
+        
+        if (!response.ok) {
+          let errorMessage = `HTTP ${response.status}`;
+          try {
+            const errorText = await response.text();
+            console.error('API Error:', errorText);
+            errorMessage = errorText || errorMessage;
+          } catch (parseError) {
+            console.error('Error parsing API error response:', parseError);
+          }
+          throw new Error(`Transcription failed: ${errorMessage}`);
+        }
+
+        let data;
+        try {
+          data = await response.json();
+        } catch (parseError) {
+          console.error('Error parsing API response:', parseError);
+          throw new Error('Invalid response format from transcription service');
+        }
+
+        console.log('API Response data:', data);
+        
+        if (!data || typeof data.text !== 'string') {
+          throw new Error('Invalid transcription response format');
+        }
+
+        if (data.text.trim().length === 0) {
+          Alert.alert('Info', 'No speech detected in the recording');
+          return;
+        }
+
+        onTranscriptionResult(data.text);
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError.name === 'AbortError') {
+          throw new Error('Request timeout - please try again');
+        }
+        
+        if (fetchError.message.includes('Network request failed')) {
+          throw new Error('Network error - check your connection and server');
+        }
+        
+        throw fetchError;
       }
 
-      const data = await response.json();
-      console.log('API Response data:', data);
-      onTranscriptionResult(data.text);
+      // Clean up the temporary file
+      try {
+        await FileSystem.deleteAsync(uri, { idempotent: true });
+        console.log('Temporary recording file cleaned up');
+      } catch (cleanupError) {
+        console.warn('Failed to clean up temporary file:', cleanupError);
+      }
+
     } catch (error: any) {
       console.error('Failed to process recording:', error);
-      Alert.alert('Error', `Failed to process recording: ${error.message}`);
+      
+      // Reset state on error
+      setRecording(null);
+      setIsRecording(false);
+      setDuration(0);
+      setMetering(null);
+      
+      // Show user-friendly error messages
+      let userMessage = 'Failed to process recording. Please try again.';
+      
+      if (error.message.includes('timeout')) {
+        userMessage = 'Request timed out. Please check your connection and try again.';
+      } else if (error.message.includes('Network')) {
+        userMessage = 'Network error. Please check your connection and server status.';
+      } else if (error.message.includes('empty')) {
+        userMessage = 'Recording is empty. Please try recording again.';
+      } else if (error.message.includes('No speech detected')) {
+        userMessage = 'No speech detected. Please speak clearly and try again.';
+      }
+      
+      Alert.alert('Error', userMessage);
     }
   };
 
@@ -156,21 +238,111 @@ export default function SpeechInterface({ onTranscriptionResult }: SpeechInterfa
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  const pickAndShareAudio = async () => {
+    try {
+      console.log('Opening document picker...');
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'audio/*',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) {
+        console.log('User cancelled audio selection');
+        return;
+      }
+
+      const audioFile = result.assets[0];
+      console.log('Selected audio file:', audioFile);
+
+      if (!audioFile.uri) {
+        throw new Error('No file selected');
+      }
+
+      // Check file size (limit to 25MB)
+      if (audioFile.size && audioFile.size > 25 * 1024 * 1024) {
+        Alert.alert('Error', 'File size too large. Please select a file smaller than 25MB.');
+        return;
+      }
+
+      // Copy the audio file to a permanent directory for sharing
+      const documentsDir = FileSystem.documentDirectory;
+      const fileName = audioFile.name || `audio_${Date.now()}.m4a`;
+      const permanentUri = `${documentsDir}${fileName}`;
+      
+      console.log('Copying file to permanent location:', permanentUri);
+      await FileSystem.copyAsync({
+        from: audioFile.uri,
+        to: permanentUri,
+      });
+
+      // Share the audio file directly to other apps
+      console.log('Sharing audio file:', fileName);
+      await shareAudioFile(permanentUri, fileName);
+
+    } catch (error: any) {
+      console.error('Failed to process audio file:', error);
+      
+      // Show user-friendly error messages
+      let userMessage = 'Failed to process audio file. Please try again.';
+      
+      if (error.message.includes('No file selected')) {
+        userMessage = 'No file selected. Please choose an audio file.';
+      } else if (error.message.includes('File size too large')) {
+        userMessage = 'File size too large. Please select a smaller audio file.';
+      } else if (error.message.includes('Sharing is not available')) {
+        userMessage = 'Sharing is not available on this device.';
+      }
+      
+      Alert.alert('Error', userMessage);
+    }
+  };
+
+  const shareAudioFile = async (audioUri: string, fileName: string) => {
+    try {
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert('Error', 'Sharing is not available on this device');
+        return;
+      }
+
+      await Sharing.shareAsync(audioUri, {
+        mimeType: 'audio/mpeg',
+        dialogTitle: `Share ${fileName}`,
+        UTI: 'public.audio',
+      });
+      
+      console.log('Audio file shared successfully');
+    } catch (error) {
+      console.error('Failed to share audio file:', error);
+      Alert.alert('Error', 'Failed to share audio file');
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <TouchableOpacity 
-        style={[styles.button, isRecording && styles.recordingButton]} 
-        onPress={handlePress}
-      >
-        {isRecording ? (
-          <MicOff color={Colors.white} size={24} />
-        ) : (
-          <Mic color={Colors.white} size={24} />
-        )}
-      </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity 
+          style={[styles.button, isRecording && styles.recordingButton]} 
+          onPress={handlePress}
+        >
+          {isRecording ? (
+            <MicOff color={Colors.white} size={24} />
+          ) : (
+            <Mic color={Colors.white} size={24} />
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.button, styles.shareButton]} 
+          onPress={pickAndShareAudio}
+        >
+          <Share color={Colors.white} size={20} />
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.label}>
-        {isRecording ? `Recording... ${formatDuration(duration)}` : 'Tap to speak'}
+        {isRecording ? `Recording... ${formatDuration(duration)}` : 'Tap to speak or share audio'}
       </Text>
+      
       {isRecording && metering !== null && (
         <View style={styles.meterContainer}>
           <View 
@@ -190,6 +362,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
   },
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
   button: {
     width: 64,
     height: 64,
@@ -197,7 +374,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary[500],
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginHorizontal: 8,
   },
   recordingButton: {
     backgroundColor: Colors.error[500],
@@ -207,6 +384,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.gray[600],
     marginBottom: 8,
+    textAlign: 'center',
   },
   meterContainer: {
     width: '100%',
@@ -218,5 +396,11 @@ const styles = StyleSheet.create({
   meter: {
     height: '100%',
     backgroundColor: Colors.primary[500],
+  },
+  shareButton: {
+    backgroundColor: Colors.gray[500],
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
 });
