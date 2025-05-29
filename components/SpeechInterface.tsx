@@ -138,7 +138,6 @@ export default function SpeechInterface({ onTranscriptionResult }: SpeechInterfa
           activeOpacity={1}
           delayPressIn={0}
           delayPressOut={0}
-          onPress={0}
         >
           {isRecording ? (
             <Text style={styles.buttonText}>Recording...</Text>
