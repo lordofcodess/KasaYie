@@ -3,7 +3,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system';
 import * as Share from 'expo-sharing';
 import { StatusBar } from 'expo-status-bar';
-import { Copy, QrCode, Send } from 'lucide-react-native';
+import { BadgeCheck, Copy, QrCode } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -192,7 +192,7 @@ const handleShareAudio = async () => {
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <StatusBar style="dark" />
         <View style={styles.header}>
-          <Text style={styles.title}>Transcribe</Text>
+          <Text style={styles.title}>KasaPa</Text>
           <TouchableOpacity style={styles.qrButton} onPress={() => setShowQRModal(true)}>
             <QrCode color={Colors.primary[700]} size={24} />
           </TouchableOpacity>
@@ -214,23 +214,15 @@ const handleShareAudio = async () => {
                 <TouchableOpacity style={styles.actionButton} onPress={handleCopy}>
                   <Copy color={Colors.white} size={24} />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton} onPress={handleApprove}>
-                  <Text style={styles.actionButtonText}>Approve</Text>
+                <TouchableOpacity style={styles.actionButtonApprove} onPress={handleApprove}>
+                  <Text style={styles.actionButtonApproveText}><BadgeCheck color="#ffffff"/></Text>
                 </TouchableOpacity>
               </View>
             ) : null}
           </View>
-
-          <View style={styles.controls}>
-            <SpeechInterface onTranscriptionResult={handleTranscriptionResult} audioUri={audioUri} />
-
-            {transcription ? (
-              <TouchableOpacity style={styles.sendButton} onPress={() => console.log('Send button pressed')}>
-                <Send color={Colors.white} size={24} />
-              </TouchableOpacity>
-            ) : null}
           </View>
-        </View>
+
+            <SpeechInterface onTranscriptionResult={handleTranscriptionResult} audioUri={audioUri} />
       </SafeAreaView>
 
       {/* QR Code Modal */}
@@ -245,17 +237,17 @@ const handleShareAudio = async () => {
             <Text style={styles.modalTitle}>Share this Room</Text>
             {Platform.OS !== 'web' && QRCodeSVG ? (
               <QRCodeSVG
-                value={`http://10.18.108.111:5173/?room=${roomId}`}
+                value={`http://10.18.108.69:5173/?room=${roomId}`}
                 size={200}
               />
             ) : (
               <TouchableOpacity
                 onPress={() =>
-                  Linking.openURL(`http://10.18.108.111:5173/?room=${roomId}`)
+                  Linking.openURL(`http://10.18.108.69:5173/?room=${roomId}`)
                 }
               >
                 <Text style={styles.qrFallbackText}>
-                  Open room: http://10.18.108.111:5173/?room={roomId}
+                  Open room: http://10.18.108.69:5173/?room={roomId}
                 </Text>
               </TouchableOpacity>
             )}
@@ -301,7 +293,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   title: {
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'Roboto-Bold',
     fontSize: 24,
     color: Colors.primary[700],
   },
@@ -324,7 +316,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.gray[800],
     textAlignVertical: 'top',
-    minHeight: 100,
+    minHeight: 200,
     maxHeight: 160,
   },
   actionButtons: {
@@ -338,6 +330,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 8,
   },
+  actionButtonApprove: {
+    backgroundColor: 'green',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },   
   controls: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -420,6 +418,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     fontSize: 16,
     textAlign: 'center',
+  },
+  actionButtonApproveText: {
+    color: Colors.white,
+    fontSize: 20,
   },
   audioControls: {
     flexDirection: 'row',
