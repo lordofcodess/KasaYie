@@ -10,8 +10,8 @@ interface SpeechInterfaceProps {
   onTranscriptionResult: (text: string) => void;
 }
 
-// const API_URL = 'http://10.18.108.106:8000'; 
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = 'http://192.168.100.45:8000'; 
+// const API_URL = 'http://127.0.0.1:8000';
 
 export default function SpeechInterface({ onTranscriptionResult }: SpeechInterfaceProps) {
   const [isRecording, setIsRecording] = useState(false);
@@ -101,7 +101,6 @@ export default function SpeechInterface({ onTranscriptionResult }: SpeechInterfa
       // Check if the file exists
       const fileInfo = await FileSystem.getInfoAsync(uri);
       console.log('File info:', fileInfo);
-      
       if (!fileInfo.exists) {
         throw new Error('Recording file does not exist');
       }
