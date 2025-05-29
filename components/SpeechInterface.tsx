@@ -1,9 +1,7 @@
 import Colors from '@/constants/Colors';
 import { Audio } from 'expo-av';
-import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-import { Mic, MicOff, Share } from 'lucide-react-native';
+import { Mic, MicOff } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 interface SpeechInterfaceProps {
@@ -236,85 +234,6 @@ export default function SpeechInterface({ onTranscriptionResult }: SpeechInterfa
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const pickAndShareAudio = async () => {
-    try {
-      console.log('Opening document picker...');
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'audio/*',
-        copyToCacheDirectory: true,
-      });
-
-      if (result.canceled) {
-        console.log('User cancelled audio selection');
-        return;
-      }
-
-      const audioFile = result.assets[0];
-      console.log('Selected audio file:', audioFile);
-
-      if (!audioFile.uri) {
-        throw new Error('No file selected');
-      }
-
-      // Check file size (limit to 25MB)
-      if (audioFile.size && audioFile.size > 25 * 1024 * 1024) {
-        Alert.alert('Error', 'File size too large. Please select a file smaller than 25MB.');
-        return;
-      }
-
-      // Copy the audio file to a permanent directory for sharing
-      const documentsDir = FileSystem.documentDirectory;
-      const fileName = `recording_${Date.now()}.m4a`;
-      const tempUri = `${documentsDir}${fileName}`;
-      console.log('Temporary file URI:', tempUri);
-      
-      console.log('Copying file to permanent location:', tempUri);
-      await FileSystem.copyAsync({
-        from: audioFile.uri,
-        to: tempUri,
-      });
-
-      // Share the audio file directly to other apps
-      console.log('Sharing audio file:', fileName);
-      await shareAudioFile(tempUri, fileName);
-
-    } catch (error: any) {
-      console.error('Failed to process audio file:', error);
-      
-      // Show user-friendly error messages
-      let userMessage = 'Failed to process audio file. Please try again.';
-      
-      if (error.message.includes('No file selected')) {
-        userMessage = 'No file selected. Please choose an audio file.';
-      } else if (error.message.includes('File size too large')) {
-        userMessage = 'File size too large. Please select a smaller audio file.';
-      } else if (error.message.includes('Sharing is not available')) {
-        userMessage = 'Sharing is not available on this device.';
-      }
-      
-      Alert.alert('Error', userMessage);
-    }
-  };
-
-  const shareAudioFile = async (audioUri: string, fileName: string) => {
-    try {
-      if (!(await Sharing.isAvailableAsync())) {
-        Alert.alert('Error', 'Sharing is not available on this device');
-        return;
-      }
-
-      await Sharing.shareAsync(audioUri, {
-        mimeType: 'audio/mpeg',
-        dialogTitle: `Share ${fileName}`,
-        UTI: 'public.audio',
-      });
-      
-      console.log('Audio file shared successfully');
-    } catch (error) {
-      console.error('Failed to share audio file:', error);
-      Alert.alert('Error', 'Failed to share audio file');
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -324,22 +243,15 @@ export default function SpeechInterface({ onTranscriptionResult }: SpeechInterfa
           onPress={handlePress}
         >
           {isRecording ? (
-            <MicOff color={Colors.white} size={24} />
+            <MicOff color={Colors.white} size={30} />
           ) : (
-            <Mic color={Colors.white} size={24} />
+            <Mic color={Colors.white} size={30} />
           )}
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.button, styles.shareButton]} 
-          onPress={pickAndShareAudio}
-        >
-          <Share color={Colors.white} size={20} />
         </TouchableOpacity>
       </View>
 
       <Text style={styles.label}>
-        {isRecording ? `Recording... ${formatDuration(duration)}` : 'Tap to speak or share audio'}
+        {isRecording ? `Recording... ${formatDuration(duration)}` : 'Tap to speak'}
       </Text>
       
       {isRecording && metering !== null && (
@@ -367,9 +279,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   button: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 100,
+    height: 100,
+    borderRadius: 40,
     backgroundColor: Colors.primary[500],
     justifyContent: 'center',
     alignItems: 'center',
@@ -395,11 +307,5 @@ const styles = StyleSheet.create({
   meter: {
     height: '100%',
     backgroundColor: Colors.primary[500],
-  },
-  shareButton: {
-    backgroundColor: Colors.gray[500],
-    width: 56,
-    height: 56,
-    borderRadius: 28,
   },
 });

@@ -3,7 +3,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system';
 import * as Share from 'expo-sharing';
 import { StatusBar } from 'expo-status-bar';
-import { Copy, QrCode, Send, Share2 } from 'lucide-react-native';
+import { Copy, QrCode, Send } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -111,8 +111,7 @@ const handleApprove = async () => {
     });
 
     setAudioUri(fileUri);
-    Alert.alert('Success', 'Speech synthesized successfully. Playing audio...');
-    playAudio(fileUri);
+    Alert.alert('Success', 'Speech synthesized successfully.');
   } catch (error) {
     console.error('Failed to synthesize speech:', error);
     Alert.alert('Error', 'Failed to synthesize speech. Please try again.');
@@ -194,10 +193,10 @@ const handleShareAudio = async () => {
             {transcription ? (
               <View style={styles.actionButtons}>
                 <TouchableOpacity style={styles.actionButton} onPress={handleCopy}>
-                  <Copy color={Colors.primary[500]} size={24} />
+                  <Copy color={Colors.white} size={24} />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-                  <Share2 color={Colors.primary[500]} size={24} />
+                <TouchableOpacity style={styles.actionButton} onPress={handleApprove}>
+                  <Text style={styles.actionButtonText}>Approve</Text>
                 </TouchableOpacity>
               </View>
             ) : null}
