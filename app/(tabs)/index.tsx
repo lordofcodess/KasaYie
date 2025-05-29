@@ -1,10 +1,12 @@
-
+import { Audio } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system';
 import * as Share from 'expo-sharing';
 import { StatusBar } from 'expo-status-bar';
 import { Copy, QrCode, Send, Share2 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Linking,
   Modal,
   Platform,
@@ -28,6 +30,7 @@ if (Platform.OS !== 'web') {
 }
 
 const SOCKET_URL = 'http://10.18.108.111:3000';
+const API_URL = 'http://10.18.108.111:3000';
 
 export default function HomeScreen() {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -81,6 +84,58 @@ const handleTranscriptionResult = (text: string) => {
   setTranscribedText(text); // Save the transcribed text for review
 };
 
+const handleApprove = async () => {
+  if (!transcription) {
+    Alert.alert('Error', 'No transcription available to synthesize.');
+    return;
+  }
+
+  try {
+    setIsSynthesizing(true);
+    console.log(`Sending transcription to ${API_URL}/synthesize`);
+
+    const response = await fetch(`${API_URL}/synthesize?text=${encodeURIComponent(transcription)}`, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Synthesis failed:', errorText);
+      throw new Error(`Synthesis failed: ${errorText}`);
+    }
+
+    const blob = await response.blob();
+    const fileUri = `${FileSystem.documentDirectory}audio.wav`;
+    await FileSystem.writeAsStringAsync(fileUri, await blob.text(), {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    setAudioUri(fileUri);
+    Alert.alert('Success', 'Speech synthesized successfully. Playing audio...');
+    playAudio(fileUri);
+  } catch (error) {
+    console.error('Failed to synthesize speech:', error);
+    Alert.alert('Error', 'Failed to synthesize speech. Please try again.');
+  } finally {
+    setIsSynthesizing(false);
+  }
+};
+
+const playAudio = async (uri: string) => {
+  if (!uri) {
+    Alert.alert('Error', 'No audio available to play.');
+    return;
+  }
+
+  try {
+    const { sound } = await Audio.Sound.createAsync({ uri });
+    await sound.playAsync();
+  } catch (error) {
+    console.error('Failed to play audio:', error);
+    Alert.alert('Error', 'Failed to play audio. Please try again.');
+  }
+};
+
   return (
     <>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -99,7 +154,7 @@ const handleTranscriptionResult = (text: string) => {
               multiline
               placeholder="Your transcription will appear here..."
               value={transcription}
-              onChangeText={handleChange}
+              onChangeText={setTranscription} // Update the transcription state
               placeholderTextColor={Colors.gray[400]}
             />
 
@@ -278,6 +333,19 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
     fontSize: 14,
     marginTop: 8,
+    textAlign: 'center',
+  },
+  approveButton: {
+    backgroundColor: Colors.primary[500],
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  approveButtonText: {
+    color: Colors.white,
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
     textAlign: 'center',
   },
 });
