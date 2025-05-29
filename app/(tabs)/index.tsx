@@ -3,7 +3,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system';
 import * as Share from 'expo-sharing';
 import { StatusBar } from 'expo-status-bar';
-import { BadgeCheck, Copy, QrCode } from 'lucide-react-native';
+import { BadgeCheck, Copy, FolderDown, Play, QrCode, Share2 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -30,7 +30,7 @@ if (Platform.OS !== 'web') {
 }
 const API_URL = 'https://r3iny0c7rnsoad-8888.proxy.runpod.net';
 // const API_URL = 'https://2133-213-173-98-73.ngrok-free.app';
-const SOCKET_URL = 'http://10.18.108.75:3000';
+const SOCKET_URL = 'http://10.18.108.69:3000';
 const socket = io(SOCKET_URL, {
   transports: ['websocket'],
 });
@@ -104,6 +104,15 @@ const handleApprove = async () => {
   }
 
   try {
+    // First, send the transcription via websocket
+    if (socket && socket.connected) {
+      socket.emit('send-text', { roomId, text: transcription });
+      console.log('Transcription sent via websocket:', transcription);
+    } else {
+      console.warn('Socket is not connected. Skipping websocket send.');
+    }
+
+    // Then proceed with speech synthesis
     setIsSynthesizing(true);
     console.log(`Sending transcription to ${API_URL}/synthesize`);
 
@@ -263,14 +272,14 @@ const handleShareAudio = async () => {
 
       {audioUri && (
   <View style={styles.audioControls}>
-    <TouchableOpacity style={styles.audioButton} onPress={() => playAudio(audioUri)}>
-      <Text style={styles.audioButtonText}>Play</Text>
+    <TouchableOpacity style={styles.audioPlayButton} onPress={() => playAudio(audioUri)}>
+      <Text style={styles.audioButtonText}><Play color="#fff" /></Text>
     </TouchableOpacity>
     <TouchableOpacity style={styles.audioButton} onPress={handleSaveAudio}>
-      <Text style={styles.audioButtonText}>Save</Text>
+      <Text style={styles.audioButtonText}><FolderDown color="#fff" /></Text>
     </TouchableOpacity>
     <TouchableOpacity style={styles.audioButton} onPress={handleShareAudio}>
-      <Text style={styles.audioButtonText}>Share</Text>
+      <Text style={styles.audioButtonText}><Share2 color="#ffffff" /></Text>
     </TouchableOpacity>
   </View>
 )}
@@ -434,6 +443,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 8,
   },
+  audioPlayButton:{
+    backgroundColor: 'green',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+
   audioButtonText: {
     color: Colors.white,
     fontFamily: 'Inter-Bold',
