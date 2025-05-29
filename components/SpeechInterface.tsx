@@ -9,7 +9,7 @@ interface SpeechInterfaceProps {
   audioUri: string | null;
 }
 
-const API_URL = 'https://2133-213-173-98-73.ngrok-free.app';
+const API_URL = 'https://r3iny0c7rnsoad-8888.proxy.runpod.net';
 
 export default function SpeechInterface({ onTranscriptionResult, audioUri }: SpeechInterfaceProps) {
   const [isRecording, setIsRecording] = useState(false);
