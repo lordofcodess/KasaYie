@@ -10,8 +10,7 @@ interface SpeechInterfaceProps {
   onTranscriptionResult: (text: string) => void;
 }
 
-const API_URL = 'http://192.168.100.45:8000'; 
-// const API_URL = 'http://127.0.0.1:8000';
+const API_URL = 'https://f838-213-173-98-73.ngrok-free.app/';
 
 export default function SpeechInterface({ onTranscriptionResult }: SpeechInterfaceProps) {
   const [isRecording, setIsRecording] = useState(false);
@@ -129,7 +128,7 @@ export default function SpeechInterface({ onTranscriptionResult }: SpeechInterfa
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
       try {
-        const response = await fetch(`http://127.0.0.1:8000/transcribe`, {
+        const response = await fetch(`https://f838-213-173-98-73.ngrok-free.app/transcribe`, {
           method: 'POST',
           body: formData,
           headers: {
@@ -265,18 +264,19 @@ export default function SpeechInterface({ onTranscriptionResult }: SpeechInterfa
 
       // Copy the audio file to a permanent directory for sharing
       const documentsDir = FileSystem.documentDirectory;
-      const fileName = audioFile.name || `audio_${Date.now()}.m4a`;
-      const permanentUri = `${documentsDir}${fileName}`;
+      const fileName = `recording_${Date.now()}.m4a`;
+      const tempUri = `${documentsDir}${fileName}`;
+      console.log('Temporary file URI:', tempUri);
       
-      console.log('Copying file to permanent location:', permanentUri);
+      console.log('Copying file to permanent location:', tempUri);
       await FileSystem.copyAsync({
         from: audioFile.uri,
-        to: permanentUri,
+        to: tempUri,
       });
 
       // Share the audio file directly to other apps
       console.log('Sharing audio file:', fileName);
-      await shareAudioFile(permanentUri, fileName);
+      await shareAudioFile(tempUri, fileName);
 
     } catch (error: any) {
       console.error('Failed to process audio file:', error);
