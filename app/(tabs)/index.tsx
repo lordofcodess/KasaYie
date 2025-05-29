@@ -136,6 +136,39 @@ const playAudio = async (uri: string) => {
   }
 };
 
+const handleSaveAudio = async () => {
+  if (!audioUri) {
+    Alert.alert('Error', 'No audio available to save.');
+    return;
+  }
+
+  try {
+    const fileUri = `${FileSystem.documentDirectory}saved_audio.wav`;
+    await FileSystem.copyAsync({
+      from: audioUri,
+      to: fileUri,
+    });
+    Alert.alert('Success', 'Audio saved successfully.');
+  } catch (error) {
+    console.error('Failed to save audio:', error);
+    Alert.alert('Error', 'Failed to save audio. Please try again.');
+  }
+};
+
+const handleShareAudio = async () => {
+  if (!audioUri) {
+    Alert.alert('Error', 'No audio available to share.');
+    return;
+  }
+
+  try {
+    await Share.shareAsync(audioUri);
+  } catch (error) {
+    console.error('Failed to share audio:', error);
+    Alert.alert('Error', 'Failed to share audio. Please try again.');
+  }
+};
+
   return (
     <>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -217,6 +250,17 @@ const playAudio = async (uri: string) => {
           </View>
         </View>
       </Modal>
+
+      {audioUri && (
+  <View style={styles.actionButtons}>
+    <TouchableOpacity style={styles.actionButton} onPress={handleSaveAudio}>
+      <Text style={styles.actionButtonText}>Save</Text>
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.actionButton} onPress={handleShareAudio}>
+      <Text style={styles.actionButtonText}>Share</Text>
+    </TouchableOpacity>
+  </View>
+)}
     </>
   );
 }
@@ -264,12 +308,14 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 8,
-    gap: 16,
+    justifyContent: 'space-between',
+    marginTop: 16,
   },
   actionButton: {
-    padding: 8,
+    backgroundColor: Colors.primary[500],
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
   },
   controls: {
     flexDirection: 'row',
@@ -343,6 +389,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   approveButtonText: {
+    color: Colors.white,
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  actionButtonText: {
     color: Colors.white,
     fontFamily: 'Inter-Bold',
     fontSize: 16,
