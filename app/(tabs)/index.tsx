@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import uuid from 'react-native-uuid';
-import { io, Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
 
 import SpeechInterface from '@/components/SpeechInterface';
 import Colors from '@/constants/Colors';
@@ -28,12 +28,15 @@ let QRCodeSVG: React.ComponentType<{ value: string; size: number }> | undefined;
 if (Platform.OS !== 'web') {
   QRCodeSVG = require('react-native-qrcode-svg').default;
 }
-
-const SOCKET_URL = 'http://10.18.108.111:3000';
-const API_URL = 'http://10.18.108.111:3000';
+const API_URL = 'https://2133-213-173-98-73.ngrok-free.app';
+const SOCKET_URL = 'http://10.18.108.75:3000';
+const socket = io(SOCKET_URL, {
+  transports: ['websocket'],
+});
+console.log('Socket URL:', SOCKET_URL);
+console.log('API URL:', API_URL);
 
 export default function HomeScreen() {
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [roomId, setRoomId] = useState<string>(uuid.v4().toString());
   const [text, setText] = useState<string>('');
   const [transcription, setTranscription] = useState<string>('');
@@ -43,15 +46,12 @@ export default function HomeScreen() {
   const [audioUri, setAudioUri] = useState<string | null>(null);
 
   useEffect(() => {
-    const newSocket = io(SOCKET_URL);
-    setSocket(newSocket);
-
-    newSocket.on('connect', () => {
-      newSocket.emit('join-room', roomId);
+    socket.on('connect', () => {
+      socket.emit('join-room', roomId);
     });
 
     return () => {
-      newSocket.disconnect();
+      socket.disconnect();
     };
   }, [roomId]);
 
@@ -63,8 +63,10 @@ export default function HomeScreen() {
   
 const handleChange = (val: string) => {
   setTranscription(val); // Update the displayed state
-  if (socket) {
+  if (socket && socket.connected) {
     socket.emit('send-text', { roomId, text: val });
+  } else {
+    console.warn('Socket is not connected.');
   }
 };
   const handleCopy = async () => {
@@ -81,7 +83,17 @@ const handleChange = (val: string) => {
 
   // Update the transcription result handler
 const handleTranscriptionResult = (text: string) => {
-  setTranscribedText(text); // Save the transcribed text for review
+  console.log('Transcription Result:', text);
+  setTranscription(text); // Save the transcription for display
+};
+
+const blobToBase64 = async (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 };
 
 const handleApprove = async () => {
@@ -105,8 +117,9 @@ const handleApprove = async () => {
     }
 
     const blob = await response.blob();
+    const base64Audio = await blobToBase64(blob);
     const fileUri = `${FileSystem.documentDirectory}audio.wav`;
-    await FileSystem.writeAsStringAsync(fileUri, await blob.text(), {
+    await FileSystem.writeAsStringAsync(fileUri, base64Audio.split(',')[1], {
       encoding: FileSystem.EncodingType.Base64,
     });
 
@@ -120,7 +133,7 @@ const handleApprove = async () => {
   }
 };
 
-const playAudio = async (uri: string) => {
+const playAudio = async (uri: string | null) => {
   if (!uri) {
     Alert.alert('Error', 'No audio available to play.');
     return;
@@ -155,6 +168,11 @@ const handleSaveAudio = async () => {
 };
 
 const handleShareAudio = async () => {
+  if (Platform.OS === 'web') {
+    Alert.alert('Error', 'Sharing is not supported on web.');
+    return;
+  }
+
   if (!audioUri) {
     Alert.alert('Error', 'No audio available to share.');
     return;
@@ -203,10 +221,10 @@ const handleShareAudio = async () => {
           </View>
 
           <View style={styles.controls}>
-            <SpeechInterface onTranscriptionResult={setTranscription} />
+            <SpeechInterface onTranscriptionResult={handleTranscriptionResult} audioUri={audioUri} />
 
             {transcription ? (
-              <TouchableOpacity style={styles.sendButton}>
+              <TouchableOpacity style={styles.sendButton} onPress={() => console.log('Send button pressed')}>
                 <Send color={Colors.white} size={24} />
               </TouchableOpacity>
             ) : null}
@@ -251,12 +269,15 @@ const handleShareAudio = async () => {
       </Modal>
 
       {audioUri && (
-  <View style={styles.actionButtons}>
-    <TouchableOpacity style={styles.actionButton} onPress={handleSaveAudio}>
-      <Text style={styles.actionButtonText}>Save</Text>
+  <View style={styles.audioControls}>
+    <TouchableOpacity style={styles.audioButton} onPress={() => playAudio(audioUri)}>
+      <Text style={styles.audioButtonText}>Play</Text>
     </TouchableOpacity>
-    <TouchableOpacity style={styles.actionButton} onPress={handleShareAudio}>
-      <Text style={styles.actionButtonText}>Share</Text>
+    <TouchableOpacity style={styles.audioButton} onPress={handleSaveAudio}>
+      <Text style={styles.audioButtonText}>Save</Text>
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.audioButton} onPress={handleShareAudio}>
+      <Text style={styles.audioButtonText}>Share</Text>
     </TouchableOpacity>
   </View>
 )}
@@ -394,6 +415,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   actionButtonText: {
+    color: Colors.white,
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  audioControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  audioButton: {
+    backgroundColor: Colors.primary[500],
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  audioButtonText: {
     color: Colors.white,
     fontFamily: 'Inter-Bold',
     fontSize: 16,

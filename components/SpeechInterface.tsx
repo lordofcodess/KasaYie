@@ -6,11 +6,12 @@ import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 interface SpeechInterfaceProps {
   onTranscriptionResult: (text: string) => void;
+  audioUri: string | null;
 }
 
-const API_URL = 'https://f838-213-173-98-73.ngrok-free.app/';
+const API_URL = 'https://2133-213-173-98-73.ngrok-free.app';
 
-export default function SpeechInterface({ onTranscriptionResult }: SpeechInterfaceProps) {
+export default function SpeechInterface({ onTranscriptionResult, audioUri }: SpeechInterfaceProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [duration, setDuration] = useState(0);
@@ -126,7 +127,7 @@ export default function SpeechInterface({ onTranscriptionResult }: SpeechInterfa
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
       try {
-        const response = await fetch(`https://f838-213-173-98-73.ngrok-free.app/transcribe`, {
+        const response = await fetch(`${API_URL}/transcribe`, {
           method: 'POST',
           body: formData,
           headers: {
