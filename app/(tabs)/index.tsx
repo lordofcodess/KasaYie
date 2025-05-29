@@ -28,7 +28,8 @@ let QRCodeSVG: React.ComponentType<{ value: string; size: number }> | undefined;
 if (Platform.OS !== 'web') {
   QRCodeSVG = require('react-native-qrcode-svg').default;
 }
-const API_URL = 'https://2133-213-173-98-73.ngrok-free.app';
+const API_URL = 'https://r3iny0c7rnsoad-8888.proxy.runpod.net';
+// const API_URL = 'https://2133-213-173-98-73.ngrok-free.app';
 const SOCKET_URL = 'http://10.18.108.75:3000';
 const socket = io(SOCKET_URL, {
   transports: ['websocket'],
