@@ -1,3 +1,4 @@
+import { useNavigation } from '@react-navigation/native'; // Import navigation hook
 import { Audio } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system';
@@ -38,6 +39,7 @@ console.log('Socket URL:', SOCKET_URL);
 console.log('API URL:', API_URL);
 
 export default function HomeScreen() {
+  const navigation = useNavigation(); // Access navigation object
   const [roomId, setRoomId] = useState<string>(uuid.v4().toString());
   const [text, setText] = useState<string>('');
   const [transcription, setTranscription] = useState<string>('');
@@ -164,13 +166,31 @@ const handleSaveAudio = async () => {
     return;
   }
 
+  if (!transcription) {
+    Alert.alert('Error', 'No transcription available to name the file.');
+    return;
+  }
+
   try {
-    const fileUri = `${FileSystem.documentDirectory}saved_audio.wav`;
+    // Create a special directory for saved audio files
+    const directoryUri = `${FileSystem.documentDirectory}SavedAudios/`;
+    const dirInfo = await FileSystem.getInfoAsync(directoryUri);
+
+    if (!dirInfo.exists) {
+      await FileSystem.makeDirectoryAsync(directoryUri, { intermediates: true });
+    }
+
+    // Generate a valid filename from the transcription
+    const sanitizedFileName = transcription.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
+    const fileUri = `${directoryUri}${sanitizedFileName}.wav`;
+
+    // Copy the audio file to the new location
     await FileSystem.copyAsync({
       from: audioUri,
       to: fileUri,
     });
-    Alert.alert('Success', 'Audio saved successfully.');
+
+    Alert.alert('Success', `Audio saved as "${sanitizedFileName}.wav".`);
   } catch (error) {
     console.error('Failed to save audio:', error);
     Alert.alert('Error', 'Failed to save audio. Please try again.');
